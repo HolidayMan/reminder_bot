@@ -8,3 +8,14 @@ class TgUserAdmin(admin.ModelAdmin):
 @admin.register(Subscriptions)
 class SubscriptionsAdmin(admin.ModelAdmin):
     list_display = ("id", "title")
+
+
+@admin.register(UserEvent)
+class UserEventAdmin(admin.ModelAdmin):
+    list_display = ("id", "title", "remind_time", "times")
+
+
+@admin.register(MailingArcticle)
+class MailingArticleAdmin(admin.ModelAdmin):
+    list_display = ("id", "body", "remind_time", "remind")
+    

@@ -13,10 +13,10 @@ from .utils import user_exists
 bot = telebot.TeleBot(TOKEN)
 
 from .handlers import tz_handler, MAIN_KEYBOARD
-
+from .mailing import *
 logger = telebot.logger
 logging.basicConfig(filename='bot.log', filemode='a', format='%(asctime)s:%(name)s - %(message)s')
-telebot.logger.setLevel(logging.DEBUG)
+# telebot.logger.setLevel(logging.DEBUG)
 
 
 @bot.message_handler(commands=['start'])

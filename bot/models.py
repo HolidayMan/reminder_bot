@@ -18,3 +18,18 @@ class Subscriptions(models.Model):
     def __str__(self):
         return self.title
         
+
+class UserEvent(models.Model):
+    title = models.CharField(max_length=256, blank=True)
+    remind_time = models.TimeField(verbose_name="Remind Time", blank=True)
+    times = models.IntegerField(blank=True)
+    user = models.ForeignKey("TgUser", on_delete=models.CASCADE, related_name="events", blank=False)
+
+    def __str__(self):
+        return self.title
+
+
+class MailingArcticle(models.Model):
+    body = models.CharField(max_length=4096)
+    remind_time = models.TimeField(verbose_name="Remind Time", blank=True)
+    remind = models.BooleanField(default=True)

@@ -12,6 +12,7 @@ from bot.bot import *
 
 from bot.handlers import *
 
+# import bot.mailing
 
 WEBHOOK_SSL_CERT = os.path.join(BASE_DIR, 'webhook_cert.pem')
 

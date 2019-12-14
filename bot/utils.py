@@ -2,7 +2,7 @@ from vedis import Vedis
 
 from reminder_bot.settings import STATES_FILE
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from .models import TgUser
 from .states.states import States
 
@@ -21,6 +21,20 @@ def localize_time(utctime: datetime, offset: int = 0, timezone: str = None) -> d
         elif offset < 0:
             return utctime - timedelta(hours=abs(offset))
     return utctime
+
+def unlocalize_time(local_time: datetime, offset: int = 0, timezone: str = None) -> datetime:
+    if offset:
+        if offset >= 0:
+            return local_time - timedelta(hours=offset)
+        elif offset < 0:
+            return local_time + timedelta(hours=abs(offset))
+    elif timezone:
+        offset = int(timezone[3:])
+        if offset >= 0:
+            return local_time - timedelta(hours=offset)
+        elif offset < 0:
+            return local_time + timedelta(hours=abs(offset))
+    return local_time
 
 
 def user_exists(message):

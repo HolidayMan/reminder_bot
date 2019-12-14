@@ -114,3 +114,4 @@ buffer
 /tmp/*
 
 .handler-saves/
+static/
