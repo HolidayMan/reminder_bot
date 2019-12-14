@@ -112,3 +112,5 @@ local_settings/
 *.vdb
 buffer
 /tmp/*
+
+.handler-saves/

@@ -11,3 +11,5 @@ DATABASES = {
 TOKEN = "<your token>"
 
 SECRET_KEY = '<your SECRET_KEY>' # django SECRET_KEY
+
+STATES_FILE = "states.vdb"
