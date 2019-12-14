@@ -11,3 +11,10 @@ class TgUser(models.Model):
     def __str__(self):
         return self.username
 
+class Subscriptions(models.Model):
+    title = models.CharField(max_length=256)
+    users = models.ManyToManyField("TgUser", blank=True, related_name="subscriptions", verbose_name="Subscriptions")
+
+    def __str__(self):
+        return self.title
+        

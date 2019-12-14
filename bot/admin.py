@@ -5,3 +5,6 @@ from .models import *
 class TgUserAdmin(admin.ModelAdmin):
     list_display = ("id", "tg_id", "first_name", "username", "admin", "tz_info", "date_joined")
 
+@admin.register(Subscriptions)
+class SubscriptionsAdmin(admin.ModelAdmin):
+    list_display = ("id", "title")
