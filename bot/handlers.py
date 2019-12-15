@@ -3,6 +3,8 @@ from datetime import datetime, time, date
 
 from telebot import types
 
+from django.core.paginator import Paginator
+
 from .utils import localize_time, unlocalize_time, set_menu_state, get_current_state, set_state
 from .states.states import States
 
@@ -12,8 +14,10 @@ from .models import TgUser, Subscriptions, UserEvent
 
 from bot.buffer import Buffer
 
-MAIN_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-MAIN_KEYBOARD.add("Подробнее о рассылке", "Создать своё событие", "Калькулятор сна", "Изменить часовой пояс")
+MAIN_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+MAIN_KEYBOARD.add("Подробнее о рассылке")
+MAIN_KEYBOARD.row("Создать своё событие", "Мои события")
+MAIN_KEYBOARD.add("Калькулятор сна", "Изменить часовой пояс")
 
 MAILING_KEYBOARD_UNSUBSCRIBED = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 MAILING_KEYBOARD_UNSUBSCRIBED.add("Подписаться на рассылку", "Назад в меню")
@@ -137,14 +141,77 @@ def handle_event_remind_times(message):
     event = buffer.get(f"new_user_event{str(message.chat.id)}")
     event.times = times
     event.save()
-    return bot.send_message(message.chat.id, ph.EVENT_SUCCESSFULY_ADDED % (event.remind_time.strftime("%H:%M"), event.title), reply_markup=MAIN_KEYBOARD)
+    localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
+    return bot.send_message(message.chat.id, ph.EVENT_SUCCESSFULY_ADDED % (localized_time.strftime("%H:%M"), event.title), reply_markup=MAIN_KEYBOARD)
+
+
+# get user events
+
+def paginate_events(events, page=1):
+    events_on_page = 10
+    paginator = Paginator(events, events_on_page)
+    page = paginator.page(page)
+    
+    if page.object_list:
+        message_text = ph.PAGINATE_EVENTS % (page.number, paginator.num_pages)
+        for num, event in enumerate(page, page.start_index()): # generating of a message
+            localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
+            message_text += '{}. <i>{}</i> ({}) кол-во повторений: {}\n'.format(num, event.title, localized_time.strftime("%H:%M"), event.times)
+    else:
+        return (ph.YOU_DONT_HAVE_EVENTS, MAIN_KEYBOARD)
+
+    keyboard = types.InlineKeyboardMarkup()
+    
+    # first_row = []
+    # second_row = []
+    # for num, i in enumerate(page.get_range()):
+    #     if num < plans_on_page // 2:
+    #         first_row.append(types.InlineKeyboardButton(text=str(i+1), callback_data="planindex_"+str(i)))
+    #     else:
+    #         second_row.append(types.InlineKeyboardButton(text=str(i+1), callback_data="planindex_"+str(i)))
+    # keyboard.row(*first_row)
+    # keyboard.row(*second_row)
+    prev_page_button = types.InlineKeyboardButton(text="⬅️", callback_data="eventpage_"+str(page.previous_page_number()) if page.has_previous() else 'eventpage_1')
+    cancel_button = types.InlineKeyboardButton(text="❌", callback_data="cancel")
+    next_page_button = types.InlineKeyboardButton(text="➡️", callback_data="eventpage_"+str(page.next_page_number()) if page.has_next() else "eventpage_"+str(paginator.num_pages))
+    keyboard.row(
+        prev_page_button,
+        cancel_button,
+        next_page_button
+    )
+    return message_text, keyboard
+
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Мои события")
+def show_events(message):
+    user = TgUser.objects.get(tg_id=message.chat.id)
+    events = UserEvent.objects.filter(user=user).order_by("remind_time")
+    message_text, keyboard = paginate_events(events)
+    if message_text != ph.YOU_DONT_HAVE_EVENTS:
+        set_state(user.tg_id, States.S_PAGINATE_EVENTS.value)
+    answer_message = bot.send_message(message.chat.id, message_text, reply_markup=keyboard, parse_mode="HTML")
+    return answer_message
+
+
+@bot.callback_query_handler(func=lambda call: get_current_state(call.message.chat.id) == States.S_PAGINATE_EVENTS.value and call.data.split('_')[0] == "eventpage")
+def change_events_page(call):
+    page = int(call.data.split('_')[1])
+    user = TgUser.objects.get(tg_id=call.message.chat.id)
+    events = UserEvent.objects.filter(user=user).order_by("remind_time")
+    message_text, keyboard = paginate_events(events, page=page)
+    try:
+        answer_message = bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=keyboard, parse_mode="HTML")
+        return answer_message
+    except:
+        return call.message
+    
 
 
 # sleep calculator
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Калькулятор сна")
 def opt_sleep_calculator(message):
-    bot.send_message(message.chat.id, ph.THIS_OPTION_IS_UNRELEASED_YET)
+    bot.send_message(message.chat.id, ph.THIS_OPTION_IS_UNRELEASED_YET, reply_markup=MAIN_KEYBOARD)
 
 
 # change timezones

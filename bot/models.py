@@ -2,14 +2,17 @@ from django.db import models
 
 class TgUser(models.Model):
     tg_id = models.IntegerField()
-    first_name = models.CharField(max_length=64)
-    username = models.CharField(max_length=64)
+    first_name = models.CharField(max_length=64, blank=True, null=True)
+    username = models.CharField(max_length=64, blank=True, null=True)
     admin = models.BooleanField(blank=True)
-    tz_info = models.CharField(max_length=5, blank=True)
+    tz_info = models.CharField(max_length=5, blank=True, null=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.username
+        if self.username:
+            return self.username
+        else:
+            return str(self.id)
 
 class Subscriptions(models.Model):
     title = models.CharField(max_length=256)
