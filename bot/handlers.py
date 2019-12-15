@@ -10,7 +10,7 @@ from .states.states import States
 
 import bot.phrases as ph
 from .bot import bot
-from .models import TgUser, Subscriptions, UserEvent
+from .models import TgUser, Subscription, UserEvent
 
 from bot.buffer import Buffer
 
@@ -67,10 +67,10 @@ def opt_more_about_mailing(message):
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MAILING_MENU_OPT.value and message.text == "Подписаться на рассылку")
 def opt_subscribe_mailing(message):
     user = TgUser.objects.get(tg_id=message.chat.id)
-    if not Subscriptions.objects.filter(title="Mailing").exists():
-        mailing = Subscriptions.objects.create(title="Mailing")
+    if not Subscription.objects.filter(title="Mailing").exists():
+        mailing = Subscription.objects.create(title="Mailing")
     else:
-        mailing = Subscriptions.objects.get(title="Mailing")
+        mailing = Subscription.objects.get(title="Mailing")
     user.subscriptions.add(mailing)
     set_menu_state(message.chat.id)
     return bot.send_message(message.chat.id, ph.AFTER_SUBSCRIBING_MAILING, reply_markup=MAIN_KEYBOARD)
@@ -79,7 +79,7 @@ def opt_subscribe_mailing(message):
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MAILING_MENU_OPT.value and message.text == "Отписаться от рассылки")
 def opt_unsubscribe_mailing(message):
     user = TgUser.objects.get(tg_id=message.chat.id)
-    mailing = Subscriptions.objects.get(title="Mailing")
+    mailing = Subscription.objects.get(title="Mailing")
     user.subscriptions.remove(mailing)
     set_menu_state(message.chat.id)
     return bot.send_message(message.chat.id, ph.AFTER_UNSUBSCRIBING_MAILING, reply_markup=MAIN_KEYBOARD)

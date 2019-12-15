@@ -14,7 +14,7 @@ class TgUser(models.Model):
         else:
             return str(self.id)
 
-class Subscriptions(models.Model):
+class Subscription(models.Model):
     title = models.CharField(max_length=256)
     users = models.ManyToManyField("TgUser", blank=True, related_name="subscriptions", verbose_name="Subscriptions")
 

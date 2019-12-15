@@ -8,7 +8,7 @@ from bot.bot import bot
 
 from .utils import localize_time
 
-from .models import MailingArcticle, TgUser, Subscriptions
+from .models import MailingArcticle, TgUser, Subscription
 
 # datetime.combine(date.today(), time(hour=hours, minute=minutes))
 
@@ -24,7 +24,7 @@ def delete_sent_article(user, article):
 def get_users_whose_time_equals() -> dict:
     utctime = datetime.utcnow()
     user_article = {}
-    users = Subscriptions.objects.get(title="Mailing").users.all()
+    users = Subscription.objects.get(title="Mailing").users.all()
     articles = MailingArcticle.objects.all()
     for article in articles:
         if not article.remind:
