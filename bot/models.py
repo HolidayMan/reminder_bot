@@ -36,3 +36,6 @@ class MailingArcticle(models.Model):
     body = models.CharField(max_length=4096)
     remind_time = models.TimeField(verbose_name="Remind Time", blank=True)
     remind = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.body[:20] + "..."

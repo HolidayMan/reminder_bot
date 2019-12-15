@@ -38,7 +38,7 @@ def send_events(user_events: dict):
             if event.id in user_event_sent.get(user.tg_id, {}): # was already sent
                 continue
             send = True
-            mess_text += f"-{event.title}\n"
+            mess_text += f"- {event.title}\n"
             event.times -= 1
             if event.times <= 0:
                 event.delete()

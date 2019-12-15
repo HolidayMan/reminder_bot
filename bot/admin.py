@@ -12,7 +12,7 @@ class SubscriptionsAdmin(admin.ModelAdmin):
 
 @admin.register(UserEvent)
 class UserEventAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "remind_time", "times")
+    list_display = ("id", "title", "remind_time", "times", "user")
 
 
 @admin.register(MailingArcticle)

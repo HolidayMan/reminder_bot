@@ -187,13 +187,14 @@ def show_events(message):
     user = TgUser.objects.get(tg_id=message.chat.id)
     events = UserEvent.objects.filter(user=user).order_by("remind_time")
     message_text, keyboard = paginate_events(events)
-    if message_text != ph.YOU_DONT_HAVE_EVENTS:
-        set_state(user.tg_id, States.S_PAGINATE_EVENTS.value)
+    # if message_text != ph.YOU_DONT_HAVE_EVENTS:
+    #     set_state(user.tg_id, States.S_PAGINATE_EVENTS.value)
     answer_message = bot.send_message(message.chat.id, message_text, reply_markup=keyboard, parse_mode="HTML")
     return answer_message
 
 
-@bot.callback_query_handler(func=lambda call: get_current_state(call.message.chat.id) == States.S_PAGINATE_EVENTS.value and call.data.split('_')[0] == "eventpage")
+# @bot.callback_query_handler(func=lambda call: get_current_state(call.message.chat.id) == States.S_PAGINATE_EVENTS.value and call.data.split('_')[0] == "eventpage")
+@bot.callback_query_handler(func=lambda call: call.data.split('_')[0] == "eventpage")
 def change_events_page(call):
     page = int(call.data.split('_')[1])
     user = TgUser.objects.get(tg_id=call.message.chat.id)
