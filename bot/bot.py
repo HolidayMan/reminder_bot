@@ -13,8 +13,9 @@ from .buffer import Buffer
 bot = telebot.TeleBot(TOKEN)
 
 from .handlers import tz_handler, MAIN_KEYBOARD
-from .mailing import *
-from .user_event_reminder import *
+
+from reminder_bot.tasks import *
+
 
 logger = telebot.logger
 logging.basicConfig(filename='bot.log', filemode='a', format='%(asctime)s:%(name)s - %(message)s')

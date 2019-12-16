@@ -8,14 +8,15 @@ from bot.bot import bot
 
 from .models import UserEvent, TgUser
 
+from reminder_bot.celery import app
 
 user_event_sent = {}
 
-
-def delete_sent_event(user, event):
-    sleep(60)
-    events = user_event_sent.get(user.tg_id)
-    events.remove(event.id)
+@app.task
+def delete_sent_event(user_id, event_id):
+    # sleep(60)
+    events = user_event_sent.get(user_id)
+    events.remove(event_id)
 
 
 def get_user_events():
@@ -45,17 +46,12 @@ def send_events(user_events: dict):
             else:
                 event.save(update_fields=["times"])
                 user_event_sent.setdefault(user.tg_id, set()).add(event.id)
-                threading.Thread(target=delete_sent_event, args=(user, event), daemon=True)
+                # threading.Thread(target=delete_sent_event, args=(user, event), daemon=True).start()
+                delete_sent_event.apply_async(args=(user.tg_id, event.id), countdown=60)
         if send:
-            bot.send_message(user.tg_id, mess_text)
+            try:
+                bot.send_message(user.tg_id, mess_text)
+            except Exception as e:
+                print(e.with_traceback())
 
 
-def main():
-    while True:
-        user_events = get_user_events()
-        send_events(user_events)
-        sleep(1)
-
-
-remind_event_thread = threading.Thread(target=main, daemon=True)
-remind_event_thread.start()
