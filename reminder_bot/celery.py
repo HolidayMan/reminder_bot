@@ -29,3 +29,5 @@ app.conf.beat_schedule = {
         'schedule': timedelta(seconds=40),
     },
 }
+
+# celery -A reminder_bot worker -l info --beat

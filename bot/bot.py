@@ -12,7 +12,7 @@ from .buffer import Buffer
 
 bot = telebot.TeleBot(TOKEN)
 
-from .handlers import tz_handler, MAIN_KEYBOARD
+from .handlers import tz_handler, MAIN_KEYBOARD, SEARCH_TZ_KEYBOARD
 
 from reminder_bot.tasks import *
 
@@ -38,7 +38,7 @@ def cmd_start(message: telebot.types.Message):
         new_user.tz_info = "UTC+0"
         new_user.admin = False
         new_user.save()
-        answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=types.ReplyKeyboardRemove())
+        answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE_AFTER_START, reply_markup=SEARCH_TZ_KEYBOARD)
         bot.register_next_step_handler(answer_message, tz_handler)
         return answer_message
         

@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timedelta
 
 from telebot import types
 
@@ -14,16 +14,23 @@ from .models import TgUser, Subscription, UserEvent
 
 from bot.buffer import Buffer
 
+SEARCH_TZ_KEYBOARD = types.InlineKeyboardMarkup()
+SEARCH_TZ_KEYBOARD.add(types.InlineKeyboardButton(text="Мой часовой пояс", url="https://www.google.com/search?q=%D0%BC%D0%BE%D0%B9+%D1%87%D0%B0%D1%81%D0%BE%D0%B2%D0%BE%D0%B9+%D0%BF%D0%BE%D1%8F%D1%81"))
+
 MAIN_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
 MAIN_KEYBOARD.add("Подробнее о рассылке")
 MAIN_KEYBOARD.row("Создать своё событие", "Мои события")
-MAIN_KEYBOARD.add("Калькулятор сна", "Изменить часовой пояс")
+MAIN_KEYBOARD.add("Калькулятор сна", "Часовой пояс")
 
 MAILING_KEYBOARD_UNSUBSCRIBED = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 MAILING_KEYBOARD_UNSUBSCRIBED.add("Подписаться на рассылку", "Назад в меню")
 
 MAILING_KEYBOARD_SUBSCRIBED = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 MAILING_KEYBOARD_SUBSCRIBED.add("Отписаться от рассылки", "Назад в меню")
+
+
+TZ_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+TZ_KEYBOARD.add("Изменить часовой пояс", "Назад в меню")
 
 def tz_handler(message):
     tz_pattern = r'[A-Z]{3}(\+|-)[1-9]{1,2}$'
@@ -33,8 +40,12 @@ def tz_handler(message):
         user.save()
         utctime = datetime.utcnow()
         localized_time = localize_time(utctime, timezone=user.tz_info)
+        if get_current_state(message.chat.id) == States.S_PAGINATE_TZ.value:
+            answer_message = bot.send_message(message.chat.id, ph.AFTER_UPDATING_TIMEZONE % (user.tz_info, localized_time.strftime("%H:%M")), reply_markup=MAIN_KEYBOARD)
+        else:
+            answer_message = bot.send_message(message.chat.id, ph.AFTER_ADDING_TIMEZONE % (user.tz_info, localized_time.strftime("%H:%M")), reply_markup=MAIN_KEYBOARD)
         set_menu_state(message.chat.id)
-        return bot.send_message(message.chat.id, ph.AFTER_UPDATING_TIMEZONE % (user.tz_info, localized_time.strftime("%H:%M")), reply_markup=MAIN_KEYBOARD)
+        return answer_message
     else:
         answer_message = bot.send_message(message.chat.id, ph.INVALID_TIMEZONE)
         bot.register_next_step_handler(answer_message, tz_handler)
@@ -45,11 +56,6 @@ def tz_handler(message):
 def back_to_menu_handler(message):
     set_menu_state(message.chat.id)
     return bot.send_message(message.chat.id, ph.MENU, reply_markup=MAIN_KEYBOARD)
-
-
-def back_to_menu(bot_message, user_message):
-    set_menu_state(user_message.chat.id)
-    return bot.edit_message_reply_markup(user_message.chat.id, message_id=bot_message.message_id, reply_markup=MAIN_KEYBOARD)
 
 
 # mailing
@@ -207,19 +213,42 @@ def change_events_page(call):
         return call.message
     
 
-
 # sleep calculator
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Калькулятор сна")
 def opt_sleep_calculator(message):
-    bot.send_message(message.chat.id, ph.THIS_OPTION_IS_UNRELEASED_YET, reply_markup=MAIN_KEYBOARD)
+    user = TgUser.objects.get(tg_id__iexact=message.chat.id)
+    utctime = datetime.utcnow()
+    localized_time = localize_time(utctime, timezone=user.tz_info)
+    answer_message = bot.send_message(message.chat.id, ph.YOUR_TIME_NOW % localized_time.strftime("%H:%M"), reply_markup=MAIN_KEYBOARD)
+    TIME_19_00 = datetime.combine(localized_time.date(), time(hour=19))
+    TIME_20_00 = datetime.combine(localized_time.date(), time(hour=20))
+    TIME_07_00 = datetime.combine(localized_time.date(), time(hour=7))
+    TIME_00_00_TODAY = datetime.combine(localized_time.date(), time(hour=0))
+    TIME_00_00_TOMORROW = datetime.combine((localized_time  + timedelta(days=1)).date(), time(hour=0))
+
+    if TIME_07_00 < localized_time < TIME_19_00:
+        pass
+    elif TIME_19_00 < localized_time < TIME_20_00:
+        pass
+    elif TIME_20_00 < localized_time < TIME_00_00_TOMORROW or TIME_00_00_TODAY < localized_time < TIME_07_00:
+        pass
+    
+    return answer_message
 
 
 # change timezones
 
-@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Изменить часовой пояс")
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Часовой пояс")
+def timezone_menu(message):
+    set_state(message.chat.id, States.S_PAGINATE_TZ.value)
+    answer_message = bot.send_message(message.chat.id, ph.YOU_ARE_IN_TZ, reply_markup=TZ_KEYBOARD)
+    return answer_message
+
+
+@bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_PAGINATE_TZ.value and message.text == "Изменить часовой пояс")
 def opt_change_timezone(message):
-    answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=types.ReplyKeyboardRemove())
+    answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=SEARCH_TZ_KEYBOARD)
     bot.register_next_step_handler(answer_message, tz_handler)
     return answer_message
     
