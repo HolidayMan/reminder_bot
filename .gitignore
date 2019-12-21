@@ -113,5 +113,7 @@ local_settings/
 buffer
 /tmp/*
 
+*.pem
+
 .handler-saves/
 static/
