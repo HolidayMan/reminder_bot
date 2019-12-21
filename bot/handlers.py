@@ -220,7 +220,7 @@ def opt_sleep_calculator(message):
     user = TgUser.objects.get(tg_id__iexact=message.chat.id)
     utctime = datetime.utcnow()
     localized_time = localize_time(utctime, timezone=user.tz_info)
-    answer_message = bot.send_message(message.chat.id, ph.YOUR_TIME_NOW % localized_time.strftime("%H:%M"), reply_markup=MAIN_KEYBOARD)
+    bot.send_message(message.chat.id, ph.YOUR_TIME_NOW % localized_time.strftime("%H:%M"), reply_markup=MAIN_KEYBOARD)
     TIME_19_00 = datetime.combine(localized_time.date(), time(hour=19))
     TIME_20_00 = datetime.combine(localized_time.date(), time(hour=20))
     TIME_07_00 = datetime.combine(localized_time.date(), time(hour=7))
@@ -228,13 +228,40 @@ def opt_sleep_calculator(message):
     TIME_00_00_TOMORROW = datetime.combine((localized_time  + timedelta(days=1)).date(), time(hour=0))
 
     if TIME_07_00 < localized_time < TIME_19_00:
-        pass
+        answer_message = if_time_less_19_00(message)
     elif TIME_19_00 < localized_time < TIME_20_00:
-        pass
+        answer_message = bot.send_message(message.chat.id, ph.IF_TIME_BETWEEN_19_20, reply_markup=MAIN_KEYBOARD)
     elif TIME_20_00 < localized_time < TIME_00_00_TOMORROW or TIME_00_00_TODAY < localized_time < TIME_07_00:
-        pass
+        answer_message = bot.send_message(message.chat.id, make_after_20_00_message(localized_time), reply_markup=MAIN_KEYBOARD)
     
     return answer_message
+
+
+def if_time_less_19_00(message):
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+    keyboard.add("Да, очень! Глаза сами закрываются!", "Ну не совсем...", "Назад в меню")
+    set_state(message.chat.id, States.S_LESS_19_00.value)
+    return bot.send_message(message.chat.id, ph.IF_TIME_LESS_19_00, reply_markup=keyboard)
+
+
+@bot.message_handler(func=lambda message: message.text == "Да, очень! Глаза сами закрываются!" and get_current_state(message.chat.id) == States.S_LESS_19_00.value)
+def sleep_calc_less_19_00_want_to_sleep(message):
+    set_menu_state(message.chat.id)
+    return bot.send_message(message.chat.id, ph.IF_WANT_TO_SLEEP, reply_markup=MAIN_KEYBOARD)
+
+
+@bot.message_handler(func=lambda message: message.text == "Ну не совсем..." and get_current_state(message.chat.id) == States.S_LESS_19_00.value)
+def sleep_calc_less_19_00_dont_want_to_sleep(message):
+    set_menu_state(message.chat.id)
+    return bot.send_message(message.chat.id, ph.IF_DONT_WANT_TO_SLEEP, reply_markup=MAIN_KEYBOARD)
+
+
+def make_after_20_00_message(localized_time):
+    time_after_8_hours = localized_time + timedelta(hours=8)
+    localized_time_string = localized_time.strftime("%H:%M")
+    time_after_8_hours_string = time_after_8_hours.strftime("%H:%M")
+    message = ph.IF_TIME_AFTER_20 % (localized_time_string, localized_time_string, time_after_8_hours_string)
+    return message
 
 
 # change timezones
