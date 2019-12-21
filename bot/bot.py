@@ -42,8 +42,13 @@ def cmd_start(message: telebot.types.Message):
         bot.register_next_step_handler(answer_message, tz_handler)
         return answer_message
         
+    set_menu_state(message.chat.id)
+    return bot.send_message(message.chat.id, ph.CMD_HELP_MESSAGE, reply_markup=MAIN_KEYBOARD)
 
-    return bot.reply_to(message, 'Hello, I\'m bot!')
+
+@bot.message_handler(commands=['help'])
+def cmd_help(message):
+    return bot.send_message(message.chat.id, ph.CMD_HELP_MESSAGE, reply_markup=MAIN_KEYBOARD)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "cancel")
