@@ -138,6 +138,8 @@ def handle_event_title(message):
 def handle_event_remind_times(message):
     try:
         times = int(message.text)
+        if not 0 < times < 999999999:
+            raise ValueError("Invalid number")
     except:
         answer_message = bot.send_message(message.chat.id, ph.INVALID_TIMES)
         bot.register_next_step_handler(answer_message, handle_event_remind_times)
@@ -269,7 +271,8 @@ def make_after_20_00_message(localized_time):
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Часовой пояс")
 def timezone_menu(message):
     set_state(message.chat.id, States.S_PAGINATE_TZ.value)
-    answer_message = bot.send_message(message.chat.id, ph.YOU_ARE_IN_TZ, reply_markup=TZ_KEYBOARD)
+    user = TgUser.objects.get(tg_id=message.chat.id)
+    answer_message = bot.send_message(message.chat.id, ph.YOU_ARE_IN_TZ % (user.tz_info, localize_time(datetime.utcnow(), timezone=user.tz_info).strftime("%H:%M")), reply_markup=TZ_KEYBOARD)
     return answer_message
 
 

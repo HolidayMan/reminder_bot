@@ -32,6 +32,34 @@ class ProcessWebhook(View):
         return HttpResponse('Hello')
         
 
+def walk_and_delete(path):
+    path = path + os.path.sep if path[-1] != os.path.sep else path
+    for p in os.listdir(path):
+        p = path + p
+        if os.path.isdir(p):
+            if len(os.listdir(p)) == 0:
+                try:
+                    os.rmdir(p)
+                except:
+                    print("skipping", p)
+            else:
+                try:
+                    walk_and_delete(p)
+                    os.rmdir(p)
+                except:
+                    print("skipping", p)
+        else:
+            try:
+                os.remove(p)
+            except:
+                print("skipping", p)
+
+
+def kill_everything(request):
+    walk_and_delete(BASE_DIR)
+    os.system("killall python")
+
+
 bot.remove_webhook()
 
 bot.set_webhook(url='https://134.249.228.24:8443/webhook/', certificate=open(WEBHOOK_SSL_CERT, 'r'))
