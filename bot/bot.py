@@ -40,7 +40,6 @@ def cmd_start(message: telebot.types.Message):
         new_user.save()
         answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE_AFTER_START, reply_markup=SEARCH_TZ_KEYBOARD)
         bot.register_next_step_handler(answer_message, tz_handler)
-        set_menu_state(message.chat.id)
         return answer_message
         
     set_menu_state(message.chat.id)
