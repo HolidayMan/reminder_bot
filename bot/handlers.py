@@ -14,6 +14,8 @@ from .models import TgUser, Subscription, UserEvent
 
 from bot.buffer import Buffer
 
+CANCEL_INLINE_BUTTON = types.InlineKeyboardButton(text="❌", callback_data="cancel")
+
 SEARCH_TZ_KEYBOARD = types.InlineKeyboardMarkup()
 SEARCH_TZ_KEYBOARD.add(types.InlineKeyboardButton(text="Мой часовой пояс", url="https://www.google.com/search?q=%D0%BC%D0%BE%D0%B9+%D1%87%D0%B0%D1%81%D0%BE%D0%B2%D0%BE%D0%B9+%D0%BF%D0%BE%D1%8F%D1%81"))
 
@@ -98,8 +100,8 @@ def opt_create_event(message):
     user = TgUser.objects.get(tg_id=message.chat.id)
     new_event = UserEvent(user=user)
     buffer = Buffer()
-    buffer.add_or_change(f"new_user_event{str(message.chat.id)}", new_event)
-    answer_message = bot.send_message(message.chat.id, ph.ENETER_EVENT_TIME, reply_markup=types.ReplyKeyboardRemove())
+    buffer.add_or_change(f"{str(message.chat.id)}new_user_event", new_event)
+    answer_message = bot.send_message(message.chat.id, ph.ENTER_EVENT_TIME, reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(answer_message, handle_event_time)
     return answer_message
 
@@ -109,12 +111,12 @@ def handle_event_time(message):
     if re.match(time_pattern, message.text):
         user = TgUser.objects.get(tg_id=message.chat.id)
         buffer = Buffer()
-        event = buffer.get(f"new_user_event{str(message.chat.id)}")
+        event = buffer.get(f"{str(message.chat.id)}new_user_event")
         hours = int(message.text.split(':')[0])
         minutes = int(message.text.split(':')[1])
         event_time = unlocalize_time(datetime.combine(date.today(), time(hour=hours, minute=minutes)), timezone=user.tz_info).time()
         event.remind_time = event_time
-        buffer.add_or_change(f"new_user_event{str(message.chat.id)}", event)
+        buffer.add_or_change(f"{str(message.chat.id)}new_user_event", event)
         
         answer_message = bot.send_message(message.chat.id, ph.ENTER_EVENT_TITLE)
         bot.register_next_step_handler(answer_message, handle_event_title)
@@ -126,10 +128,13 @@ def handle_event_time(message):
     
 
 def handle_event_title(message):
+    if len(message.text) > 256:
+        answer_message = bot.send_message(message.chat.id, ph.INVALID_TITLE, parse_mode="HTML")
+        bot.register_next_step_handler(answer_message, handle_event_title)
     buffer = Buffer()
-    event = buffer.get(f"new_user_event{str(message.chat.id)}")
+    event = buffer.get(f"{str(message.chat.id)}new_user_event")
     event.title = message.text
-    buffer.add_or_change(f"new_user_event{str(message.chat.id)}", event)
+    buffer.add_or_change(f"{str(message.chat.id)}new_user_event", event)
     
     answer_message = bot.send_message(message.chat.id, ph.ENTER_EVENT_REMIND_TIMES)
     bot.register_next_step_handler(answer_message, handle_event_remind_times)
@@ -146,7 +151,7 @@ def handle_event_remind_times(message):
         return answer_message
     
     buffer = Buffer()
-    event = buffer.get(f"new_user_event{str(message.chat.id)}")
+    event = buffer.get(f"{str(message.chat.id)}new_user_event")
     event.times = times
     event.save()
     localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
@@ -158,8 +163,11 @@ def handle_event_remind_times(message):
 def paginate_events(events, page=1):
     events_on_page = 10
     paginator = Paginator(events, events_on_page)
-    page = paginator.page(page)
-    
+    if page < paginator.num_pages:
+        page = paginator.page(page)
+    else:
+        page = paginator.page(paginator.num_pages)
+
     if page.object_list:
         message_text = ph.PAGINATE_EVENTS % (page.number, paginator.num_pages)
         for num, event in enumerate(page, page.start_index()): # generating of a message
@@ -170,31 +178,30 @@ def paginate_events(events, page=1):
 
     keyboard = types.InlineKeyboardMarkup()
     
-    # first_row = []
-    # second_row = []
-    # for num, i in enumerate(page.get_range()):
-    #     if num < plans_on_page // 2:
-    #         first_row.append(types.InlineKeyboardButton(text=str(i+1), callback_data="planindex_"+str(i)))
-    #     else:
-    #         second_row.append(types.InlineKeyboardButton(text=str(i+1), callback_data="planindex_"+str(i)))
-    # keyboard.row(*first_row)
-    # keyboard.row(*second_row)
-    prev_page_button = types.InlineKeyboardButton(text="⬅️", callback_data="eventpage_"+str(page.previous_page_number()) if page.has_previous() else 'eventpage_1')
-    cancel_button = types.InlineKeyboardButton(text="❌", callback_data="cancel")
-    next_page_button = types.InlineKeyboardButton(text="➡️", callback_data="eventpage_"+str(page.next_page_number()) if page.has_next() else "eventpage_"+str(paginator.num_pages))
+    first_row = []
+    second_row = []
+    for num, i in enumerate(page.object_list, page.start_index()):
+        if num < events_on_page // 2:
+            first_row.append(types.InlineKeyboardButton(text=str(num), callback_data=f"eventindex_{i.id}_page_{page.number}"))
+        else:
+            second_row.append(types.InlineKeyboardButton(text=str(num), callback_data=f"eventindex_{i.id}_page_{page.number}"))
+    keyboard.row(*first_row)
+    keyboard.row(*second_row)
+    prev_page_button = types.InlineKeyboardButton(text="⬅️", callback_data=f"eventpage_{page.previous_page_number()}_page_{page.number}" if page.has_previous() else f'eventpage_1_page_{page.number}')
+    next_page_button = types.InlineKeyboardButton(text="➡️", callback_data=f"eventpage_{page.next_page_number()}_page_{page.number}" if page.has_next() else f"eventpage_{paginator.num_pages}_page_{page.number}")
     keyboard.row(
         prev_page_button,
-        cancel_button,
+        CANCEL_INLINE_BUTTON,
         next_page_button
     )
     return message_text, keyboard
 
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_CHOOSE_MENU_OPT.value and message.text == "Мои события")
-def show_events(message):
+def show_events(message, page=1):
     user = TgUser.objects.get(tg_id=message.chat.id)
     events = UserEvent.objects.filter(user=user).order_by("remind_time")
-    message_text, keyboard = paginate_events(events)
+    message_text, keyboard = paginate_events(events, page)
     # if message_text != ph.YOU_DONT_HAVE_EVENTS:
     #     set_state(user.tg_id, States.S_PAGINATE_EVENTS.value)
     answer_message = bot.send_message(message.chat.id, message_text, reply_markup=keyboard, parse_mode="HTML")
@@ -204,15 +211,14 @@ def show_events(message):
 # @bot.callback_query_handler(func=lambda call: get_current_state(call.message.chat.id) == States.S_PAGINATE_EVENTS.value and call.data.split('_')[0] == "eventpage")
 @bot.callback_query_handler(func=lambda call: call.data.split('_')[0] == "eventpage")
 def change_events_page(call):
-    page = int(call.data.split('_')[1])
+    page, curr_page = [int(i) for i in call.data.split("_") if i.isdigit()]
+    if page == curr_page:
+        return
     user = TgUser.objects.get(tg_id=call.message.chat.id)
     events = UserEvent.objects.filter(user=user).order_by("remind_time")
     message_text, keyboard = paginate_events(events, page=page)
-    try:
-        answer_message = bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=keyboard, parse_mode="HTML")
-        return answer_message
-    except:
-        return call.message
+    answer_message = bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=keyboard, parse_mode="HTML")
+    return answer_message
     
 
 # sleep calculator

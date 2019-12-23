@@ -5,3 +5,4 @@ class States(Enum):
     S_PAGINATE_EVENTS = "state.paginate_events"
     S_PAGINATE_TZ = "states.paginate_tz"
     S_LESS_19_00 = "states.sleep_calc_less_19_00"
+    

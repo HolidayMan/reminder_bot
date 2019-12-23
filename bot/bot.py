@@ -15,7 +15,7 @@ bot = telebot.TeleBot(TOKEN)
 from .handlers import tz_handler, MAIN_KEYBOARD, SEARCH_TZ_KEYBOARD
 
 from reminder_bot.tasks import *
-
+from .edit_events import *
 
 logger = telebot.logger
 logging.basicConfig(filename='bot.log', filemode='a', format='%(asctime)s:%(name)s - %(message)s')
