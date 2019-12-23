@@ -5,7 +5,7 @@ from telebot import types
 
 from django.core.paginator import Paginator
 
-from .utils import localize_time, unlocalize_time, set_menu_state, get_current_state, set_state
+from .utils import localize_time, unlocalize_time, set_menu_state, get_current_state, set_state, count_time_left2sleep
 from .states.states import States
 
 import bot.phrases as ph
@@ -107,14 +107,14 @@ def opt_create_event(message):
 
 
 def handle_event_time(message):
-    time_pattern = r"([0-1][0-9]|2[0-3]):[0-5][0-9]$"
+    time_pattern = r"([0-1]*[0-9]|2[0-3]):[0-5][0-9]$"
     if re.match(time_pattern, message.text):
         user = TgUser.objects.get(tg_id=message.chat.id)
         buffer = Buffer()
         event = buffer.get(f"{str(message.chat.id)}new_user_event")
         hours = int(message.text.split(':')[0])
         minutes = int(message.text.split(':')[1])
-        event_time = unlocalize_time(datetime.combine(date.today(), time(hour=hours, minute=minutes)), timezone=user.tz_info).time()
+        event_time = unlocalize_time(datetime.combine(datetime.utcnow().date(), time(hour=hours, minute=minutes)), timezone=user.tz_info).time()
         event.remind_time = event_time
         buffer.add_or_change(f"{str(message.chat.id)}new_user_event", event)
         
@@ -154,7 +154,7 @@ def handle_event_remind_times(message):
     event = buffer.get(f"{str(message.chat.id)}new_user_event")
     event.times = times
     event.save()
-    localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
+    localized_time = localize_time(datetime.combine(datetime.utcnow().date(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
     return bot.send_message(message.chat.id, ph.EVENT_SUCCESSFULY_ADDED % (localized_time.strftime("%H:%M"), event.title), reply_markup=MAIN_KEYBOARD)
 
 
@@ -171,8 +171,8 @@ def paginate_events(events, page=1):
     if page.object_list:
         message_text = ph.PAGINATE_EVENTS % (page.number, paginator.num_pages)
         for num, event in enumerate(page, page.start_index()): # generating of a message
-            localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
-            message_text += '{}. <i>{}</i> ({}) кол-во повторений: {}\n'.format(num, event.title, localized_time.strftime("%H:%M"), event.times)
+            localized_time = localize_time(datetime.combine(datetime.utcnow().date(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
+            message_text += '{}. <i>{}</i> ({}) <b>кол-во повторений:</b> {}\n'.format(num, event.title, localized_time.strftime("%H:%M"), event.times)
     else:
         return (ph.YOU_DONT_HAVE_EVENTS, MAIN_KEYBOARD)
 
@@ -181,7 +181,7 @@ def paginate_events(events, page=1):
     first_row = []
     second_row = []
     for num, i in enumerate(page.object_list, page.start_index()):
-        if num < events_on_page // 2:
+        if num-1 < events_on_page // 2:
             first_row.append(types.InlineKeyboardButton(text=str(num), callback_data=f"eventindex_{i.id}_page_{page.number}"))
         else:
             second_row.append(types.InlineKeyboardButton(text=str(num), callback_data=f"eventindex_{i.id}_page_{page.number}"))
@@ -240,7 +240,8 @@ def opt_sleep_calculator(message):
     elif TIME_19_00 < localized_time < TIME_20_00:
         answer_message = bot.send_message(message.chat.id, ph.IF_TIME_BETWEEN_19_20, reply_markup=MAIN_KEYBOARD)
     elif TIME_20_00 < localized_time < TIME_00_00_TOMORROW or TIME_00_00_TODAY < localized_time < TIME_07_00:
-        answer_message = bot.send_message(message.chat.id, make_after_20_00_message(localized_time), reply_markup=MAIN_KEYBOARD)
+        # answer_message = bot.send_message(message.chat.id, make_after_20_00_message(localized_time), reply_markup=MAIN_KEYBOARD)
+        answer_message = if_time_after_20_00(message)
     
     return answer_message
 
@@ -264,12 +265,43 @@ def sleep_calc_less_19_00_dont_want_to_sleep(message):
     return bot.send_message(message.chat.id, ph.IF_DONT_WANT_TO_SLEEP, reply_markup=MAIN_KEYBOARD)
 
 
-def make_after_20_00_message(localized_time):
-    time_after_8_hours = localized_time + timedelta(hours=8)
-    localized_time_string = localized_time.strftime("%H:%M")
-    time_after_8_hours_string = time_after_8_hours.strftime("%H:%M")
-    message = ph.IF_TIME_AFTER_20 % (localized_time_string, localized_time_string, time_after_8_hours_string)
-    return message
+def if_time_after_20_00(message):
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+    keyboard.add("Сколько я просплю если засну прямо сейчас", "Во сколько лечь чтобы встать бодрым", "Назад в меню")
+    set_state(message.chat.id, States.S_AFTER_20_00.value)
+    return bot.send_message(message.chat.id, ph.ARE_YOU_GOING_TO_SLEEP, reply_markup=keyboard)
+
+
+@bot.message_handler(func=lambda message: message.text == "Сколько я просплю если засну прямо сейчас" and get_current_state(message.chat.id) == States.S_AFTER_20_00.value)
+def sleep_calc_less_20_00_how_long_i_will_sleep(message):
+    answer_message = bot.send_message(message.chat.id, ph.WHAT_TIME_SET_ALARM_CLOCK, reply_markup=types.ReplyKeyboardRemove())
+    bot.register_next_step_handler(answer_message, handle_alarm_clock_time)
+    return answer_message
+
+
+def handle_alarm_clock_time(message):
+    time_pattern = r"([0-1]*[0-9]|2[0-3]):[0-5][0-9]$"
+    if re.match(time_pattern, message.text):
+        user = TgUser.objects.get(tg_id=message.chat.id)
+        hours = int(message.text.split(':')[0])
+        minutes = int(message.text.split(':')[1])
+        localized_alarm_time = time(hour=hours, minute=minutes)
+
+        time_left2sleep = count_time_left2sleep(localized_alarm_time, timezone=user.tz_info)
+        set_menu_state(message.chat.id)
+        return bot.send_message(message.chat.id, ph.TO_ALARM_LEFT_TIME % (f"{str(hours)}:{str(minutes)}", str(time_left2sleep.hour), str(time_left2sleep.minute)), reply_markup=MAIN_KEYBOARD, parse_mode="HTML")
+    else:
+        answer_message = bot.send_message(message.chat.id, ph.INVALID_TIME)
+        bot.register_next_step_handler(answer_message, handle_alarm_clock_time)
+        return answer_message
+
+
+# def make_after_20_00_message(localized_time):
+#     time_after_8_hours = localized_time + timedelta(hours=8)
+#     localized_time_string = localized_time.strftime("%H:%M")
+#     time_after_8_hours_string = time_after_8_hours.strftime("%H:%M")
+#     message = ph.IF_TIME_AFTER_20 % (localized_time_string, localized_time_string, time_after_8_hours_string)
+#     return message
 
 
 # change timezones
@@ -287,4 +319,3 @@ def opt_change_timezone(message):
     answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=SEARCH_TZ_KEYBOARD)
     bot.register_next_step_handler(answer_message, tz_handler)
     return answer_message
-    

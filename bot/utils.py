@@ -2,7 +2,7 @@ from vedis import Vedis
 
 from reminder_bot.settings import STATES_FILE
 
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from .models import TgUser
 from .states.states import States
 
@@ -21,6 +21,7 @@ def localize_time(utctime: datetime, offset: int = 0, timezone: str = None) -> d
         elif offset < 0:
             return utctime - timedelta(hours=abs(offset))
     return utctime
+
 
 def unlocalize_time(local_time: datetime, offset: int = 0, timezone: str = None) -> datetime:
     if offset:
@@ -64,3 +65,15 @@ def set_menu_state(user_id):
             return True
         except:
             return False
+
+
+def count_time_left2sleep(alarm_time, timezone="UTC+0") -> time:
+    utctime = datetime.utcnow()
+    alarm_time = unlocalize_time(datetime.combine(utctime.date(), time(hour=alarm_time.hour, minute=alarm_time.minute)), timezone=timezone)
+    if alarm_time < utctime:
+        alarm_time = unlocalize_time(datetime.combine((utctime + timedelta(days=1)).date(), time(hour=alarm_time.hour, minute=alarm_time.minute)), timezone=timezone)
+        
+    time_sleep_minutes = (alarm_time - utctime).seconds % 3600 // 60
+    time_sleep_hours = (alarm_time - utctime).seconds // 3600
+    datetime_sleep = localize_time(datetime.combine(utctime.date(), time(hour=time_sleep_hours, minute=time_sleep_minutes)), timezone=timezone)
+    return datetime_sleep.time()

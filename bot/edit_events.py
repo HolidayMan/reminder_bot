@@ -29,7 +29,7 @@ def choose_event(call):
         message_text, keyboard = paginate_events(events, page=curr_page)
         return bot.edit_message_text(message_text, message.chat.id, message.message_id, reply_markup=keyboard, parse_mode="HTML")
     event = event[0]
-    localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info).time()
+    localized_time = localize_time(datetime.combine(datetime.utcnow().date(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info).time()
     message_text = ph.READ_EVENT_TEMPLATE % (event.title, localized_time.strftime("%H:%M"), event.times)
     buffer = Buffer()
     buffer_key = f"{message.chat.id}_event_read"
@@ -71,7 +71,7 @@ def event_edit(call):
     buffer_key = f"{message.chat.id}_event_read"
     event = buffer.get(buffer_key)
 
-    localized_time = localize_time(datetime.combine(date.today(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info).time()
+    localized_time = localize_time(datetime.combine(datetime.utcnow().date(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info).time()
     message_text = '<i>{}</i> ({}) кол-во повторений: {}\n\n'.format(event.title, localized_time.strftime("%H:%M"), event.times) + ph.EDIT_EVENT_TEXT
 
     keyboard = types.InlineKeyboardMarkup()
@@ -109,7 +109,7 @@ def edit_event_remind_time(call):
     return answer_message
 
 def handle_edit_event_remind_time(message):
-    time_pattern = r"([0-1][0-9]|2[0-3]):[0-5][0-9]$"
+    time_pattern = r"([0-1]*[0-9]|2[0-3]):[0-5][0-9]$"
     if re.match(time_pattern, message.text):
         buffer = Buffer()
         buffer_key = f"{message.chat.id}_event_read"
@@ -118,7 +118,7 @@ def handle_edit_event_remind_time(message):
         curr_page = buffer.get(buffer_key)
         hours = int(message.text.split(':')[0])
         minutes = int(message.text.split(':')[1])
-        event_time = unlocalize_time(datetime.combine(date.today(), time(hour=hours, minute=minutes)), timezone=event.user.tz_info).time()
+        event_time = unlocalize_time(datetime.combine(datetime.utcnow().date(), time(hour=hours, minute=minutes)), timezone=event.user.tz_info).time()
         event.remind_time = event_time
         event.save()
 
