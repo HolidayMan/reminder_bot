@@ -5,7 +5,7 @@ from telebot import types
 
 from django.core.paginator import Paginator
 
-from .utils import localize_time, unlocalize_time, set_menu_state, get_current_state, set_state, count_time_left2sleep
+from .utils import localize_time, unlocalize_time, set_menu_state, get_current_state, set_state, count_time_left2sleep, calculate_phases
 from .states.states import States
 
 import bot.phrases as ph
@@ -276,6 +276,15 @@ def if_time_after_20_00(message):
 def sleep_calc_less_20_00_how_long_i_will_sleep(message):
     answer_message = bot.send_message(message.chat.id, ph.WHAT_TIME_SET_ALARM_CLOCK, reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(answer_message, handle_alarm_clock_time)
+    set_state(message.chat.id, States.S_HOW_LONG_I_WILL_SLEEP.value)
+    return answer_message
+
+
+@bot.message_handler(func=lambda message: message.text == "Во сколько лечь чтобы встать бодрым" and get_current_state(message.chat.id) == States.S_AFTER_20_00.value)
+def sleep_calc_less_20_00_sleep_phases(message):
+    answer_message = bot.send_message(message.chat.id, ph.WHAT_TIME_SET_ALARM_CLOCK, reply_markup=types.ReplyKeyboardRemove())
+    bot.register_next_step_handler(answer_message, handle_alarm_clock_time)
+    set_state(message.chat.id, States.S_SLEEP_PHASES.value)
     return answer_message
 
 
@@ -287,9 +296,15 @@ def handle_alarm_clock_time(message):
         minutes = int(message.text.split(':')[1])
         localized_alarm_time = time(hour=hours, minute=minutes)
 
-        time_left2sleep = count_time_left2sleep(localized_alarm_time, timezone=user.tz_info)
-        set_menu_state(message.chat.id)
-        return bot.send_message(message.chat.id, ph.TO_ALARM_LEFT_TIME % (f"{str(hours)}:{str(minutes)}", str(time_left2sleep.hour), str(time_left2sleep.minute)), reply_markup=MAIN_KEYBOARD, parse_mode="HTML")
+        if get_current_state(message.chat.id) == States.S_HOW_LONG_I_WILL_SLEEP.value:
+            set_menu_state(message.chat.id)
+            time_left2sleep = count_time_left2sleep(localized_alarm_time, timezone=user.tz_info)
+            return bot.send_message(message.chat.id, ph.TO_ALARM_LEFT_TIME % (localized_alarm_time.strftime("%H:%M"), str(time_left2sleep.hour), str(time_left2sleep.minute)), reply_markup=MAIN_KEYBOARD, parse_mode="HTML")
+        elif get_current_state(message.chat.id) == States.S_SLEEP_PHASES.value:
+            set_menu_state(message.chat.id)
+            sleep_phases = calculate_phases(localized_alarm_time)
+            str_sleep_phases = tuple(phase.strftime("%H:%M") for phase in sleep_phases)
+            return bot.send_message(message.chat.id, ph.THE_BEST_TIME_TO_GO_TO_BED % str_sleep_phases, reply_markup=MAIN_KEYBOARD, parse_mode="HTML")
     else:
         answer_message = bot.send_message(message.chat.id, ph.INVALID_TIME)
         bot.register_next_step_handler(answer_message, handle_alarm_clock_time)

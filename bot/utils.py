@@ -77,3 +77,13 @@ def count_time_left2sleep(alarm_time, timezone="UTC+0") -> time:
     time_sleep_hours = (alarm_time - utctime).seconds // 3600
     datetime_sleep = localize_time(datetime.combine(utctime.date(), time(hour=time_sleep_hours, minute=time_sleep_minutes)), timezone=timezone)
     return datetime_sleep.time()
+
+
+def calculate_phases(alarm_time) -> tuple:
+    utctime = datetime.utcnow()
+    alarm_time = datetime.combine(utctime.date(), time(hour=alarm_time.hour, minute=alarm_time.minute))
+    first_phase = alarm_time - timedelta(hours=9)
+    second_phase = alarm_time - timedelta(hours=7, minutes=30)
+    third_phase = alarm_time - timedelta(hours=6)
+    fourth_phase = alarm_time - timedelta(hours=4, minutes=30)
+    return (first_phase.time(), second_phase.time(), third_phase.time(), fourth_phase.time())
