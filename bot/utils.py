@@ -69,13 +69,15 @@ def set_menu_state(user_id):
 
 def count_time_left2sleep(alarm_time, timezone="UTC+0") -> time:
     utctime = datetime.utcnow()
-    alarm_time = unlocalize_time(datetime.combine(utctime.date(), time(hour=alarm_time.hour, minute=alarm_time.minute)), timezone=timezone)
-    if alarm_time < utctime:
-        alarm_time = unlocalize_time(datetime.combine((utctime + timedelta(days=1)).date(), time(hour=alarm_time.hour, minute=alarm_time.minute)), timezone=timezone)
+    localized_time = localize_time(utctime, timezone=timezone)
+
+    alarm_time = datetime.combine(localized_time.date(), time(hour=alarm_time.hour, minute=alarm_time.minute))
+    if alarm_time < localized_time:
+        alarm_time = datetime.combine((localized_time + timedelta(days=1)).date(), time(hour=alarm_time.hour, minute=alarm_time.minute))
         
-    time_sleep_minutes = (alarm_time - utctime).seconds % 3600 // 60
-    time_sleep_hours = (alarm_time - utctime).seconds // 3600
-    datetime_sleep = localize_time(datetime.combine(utctime.date(), time(hour=time_sleep_hours, minute=time_sleep_minutes)), timezone=timezone)
+    time_sleep_minutes = (alarm_time - localized_time).seconds % 3600 // 60
+    time_sleep_hours = (alarm_time - localized_time).seconds // 3600
+    datetime_sleep = datetime.combine(localized_time.date(), time(hour=time_sleep_hours, minute=time_sleep_minutes))
     return datetime_sleep.time()
 
 

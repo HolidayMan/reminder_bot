@@ -35,7 +35,7 @@ TZ_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_t
 TZ_KEYBOARD.add("Изменить часовой пояс", "Назад в меню")
 
 def tz_handler(message):
-    tz_pattern = r'[A-Z]{3}(\+|-)[1-9]{1,2}$'
+    tz_pattern = r'[A-Z]{3}(\+|-)([0-9]|1[0-2])$'
     if re.match(tz_pattern, message.text):
         user = TgUser.objects.get(tg_id__iexact=message.chat.id)
         user.tz_info = message.text
