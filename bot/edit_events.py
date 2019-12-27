@@ -109,6 +109,10 @@ def edit_event_remind_time(call):
     return answer_message
 
 def handle_edit_event_remind_time(message):
+    if not (isinstance(message.text, str) or isinstance(message.text, bytes)):
+        answer_message = bot.send_message(message.chat.id, ph.INVALID_TIME)
+        bot.register_next_step_handler(answer_message, handle_edit_event_remind_time)
+        return answer_message
     time_pattern = r"([0-1]*[0-9]|2[0-3]):[0-5][0-9]$"
     if re.match(time_pattern, message.text):
         buffer = Buffer()
@@ -142,6 +146,10 @@ def edit_event_title(call):
     return answer_message
 
 def handle_edit_event_title(message):
+    if not (isinstance(message.text, str) or isinstance(message.text, bytes)):
+        answer_message =  bot.send_message(message.chat.id, ph.INVALID_TITLE, parse_mode="HTML")
+        bot.register_next_step_handler(answer_message, handle_edit_event_title)
+        return answer_message
     if len(message.text) > 256:
         answer_message = bot.send_message(message.chat.id, ph.INVALID_TITLE, parse_mode="HTML")
         bot.register_next_step_handler(answer_message, handle_edit_event_title)

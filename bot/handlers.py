@@ -35,6 +35,10 @@ TZ_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 TZ_KEYBOARD.add("Изменить часовой пояс", "Назад в меню")
 
 def tz_handler(message):
+    if not (isinstance(message.text, str) or isinstance(message.text, bytes)):
+        answer_message = bot.send_message(message.chat.id, ph.INVALID_TIMEZONE)
+        bot.register_next_step_handler(answer_message, tz_handler)
+        return answer_message
     tz_pattern = r'[A-Z]{3}(\+|-)([0-9]|1[0-2])$'
     if re.match(tz_pattern, message.text):
         user = TgUser.objects.get(tg_id__iexact=message.chat.id)
@@ -107,6 +111,10 @@ def opt_create_event(message):
 
 
 def handle_event_time(message):
+    if not (isinstance(message.text, str) or isinstance(message.text, bytes)):
+        answer_message = bot.send_message(message.chat.id, ph.INVALID_TIME)
+        bot.register_next_step_handler(answer_message, handle_event_time)
+        return answer_message
     time_pattern = r"([0-1]*[0-9]|2[0-3]):[0-5][0-9]$"
     if re.match(time_pattern, message.text):
         user = TgUser.objects.get(tg_id=message.chat.id)
@@ -128,6 +136,10 @@ def handle_event_time(message):
     
 
 def handle_event_title(message):
+    if not (isinstance(message.text, str) or isinstance(message.text, bytes)):
+        answer_message =  bot.send_message(message.chat.id, ph.INVALID_TITLE, parse_mode="HTML")
+        bot.register_next_step_handler(answer_message, handle_event_title)
+        return answer_message
     if len(message.text) > 256:
         answer_message = bot.send_message(message.chat.id, ph.INVALID_TITLE, parse_mode="HTML")
         bot.register_next_step_handler(answer_message, handle_event_title)
