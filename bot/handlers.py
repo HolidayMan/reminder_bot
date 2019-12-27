@@ -19,7 +19,7 @@ CANCEL_INLINE_BUTTON = types.InlineKeyboardButton(text="❌", callback_data="can
 SEARCH_TZ_KEYBOARD = types.InlineKeyboardMarkup()
 SEARCH_TZ_KEYBOARD.add(types.InlineKeyboardButton(text="Мой часовой пояс", url="https://www.google.com/search?q=%D0%BC%D0%BE%D0%B9+%D1%87%D0%B0%D1%81%D0%BE%D0%B2%D0%BE%D0%B9+%D0%BF%D0%BE%D1%8F%D1%81"))
 
-MAIN_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+MAIN_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 MAIN_KEYBOARD.add("Подробнее о рассылке")
 MAIN_KEYBOARD.row("Создать своё событие", "Мои события")
 MAIN_KEYBOARD.add("Калькулятор сна", "Часовой пояс")
@@ -31,7 +31,7 @@ MAILING_KEYBOARD_SUBSCRIBED = types.ReplyKeyboardMarkup(resize_keyboard=True, ro
 MAILING_KEYBOARD_SUBSCRIBED.add("Отписаться от рассылки", "Назад в меню")
 
 
-TZ_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1, one_time_keyboard=True)
+TZ_KEYBOARD = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
 TZ_KEYBOARD.add("Изменить часовой пояс", "Назад в меню")
 
 def tz_handler(message):
@@ -331,6 +331,7 @@ def timezone_menu(message):
 
 @bot.message_handler(func=lambda message: get_current_state(message.chat.id) == States.S_PAGINATE_TZ.value and message.text == "Изменить часовой пояс")
 def opt_change_timezone(message):
-    answer_message = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=SEARCH_TZ_KEYBOARD)
-    bot.register_next_step_handler(answer_message, tz_handler)
-    return answer_message
+    answer_message1 = bot.send_message(message.chat.id, ph.CHANGING_TZ, reply_markup=types.ReplyKeyboardRemove())
+    answer_message2 = bot.send_message(message.chat.id, ph.ENTER_YOUR_TIMEZONE, reply_markup=SEARCH_TZ_KEYBOARD)
+    bot.register_next_step_handler(answer_message2, tz_handler)
+    return answer_message1, answer_message2
