@@ -186,7 +186,7 @@ def paginate_events(events, page=1):
             localized_time = localize_time(datetime.combine(datetime.utcnow().date(), time(hour=event.remind_time.hour, minute=event.remind_time.minute)), timezone=event.user.tz_info)
             message_text += '{}. <i>{}</i> ({}) <b>кол-во повторений:</b> {}\n'.format(num, event.title, localized_time.strftime("%H:%M"), event.times)
     else:
-        return (ph.YOU_DONT_HAVE_EVENTS, MAIN_KEYBOARD)
+        return (ph.YOU_DONT_HAVE_EVENTS,  None)
 
     keyboard = types.InlineKeyboardMarkup()
     
